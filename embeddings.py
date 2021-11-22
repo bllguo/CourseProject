@@ -40,7 +40,6 @@ class Word2VecTuner():
     """
     def __init__(self, **kwargs):
         self.model = Word2Vec(**kwargs)
-        self.model.build_vocab(list(self.embeddings.index_to_key))
         
     def load_embeddings(self, embeddings: KeyedVectors=None, gensim_model: str=None):
         if gensim_model:
