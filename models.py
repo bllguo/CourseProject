@@ -1,13 +1,9 @@
-from datetime import datetime, timedelta
 from itertools import combinations
-import math as math
-from os import defpath
 import pickle
 import re
 import warnings
 import logging
 
-import boto3
 import nltk
 import numpy as np
 import pandas as pd
@@ -22,6 +18,10 @@ warnings.filterwarnings('ignore')
 
 def cosine_similarity(x, y):
     return 1 - spatial.distance.cosine(x, y)
+
+
+def pairwise_cosine_similarity(x):
+    return [cosine_similarity(pair[0], pair[1]) for pair in combinations(x, 2)]
 
 
 class ClusterModelWrapper:
@@ -140,10 +140,10 @@ class TopicTreeModel:
     
     def summarize_cluster(self, docs, center, vectorizer):
         n_candidates = self.n_candidates
-        n_return = self.n_return
         bigrams = self.get_bigrams(docs)
         possible_topics = bigrams.head(n_candidates)['bigram']
         possible_topics_vects = vectorizer.predict(possible_topics)
+        n_return = max(self.n_return, len(possible_topics))
         sims = np.array([cosine_similarity(x, center) for x in possible_topics_vects])
         inds = np.argpartition(sims, -n_return)[-n_return:]
         inds = inds[np.argsort(sims[inds])]
