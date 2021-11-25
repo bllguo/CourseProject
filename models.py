@@ -131,6 +131,9 @@ class TopicTreeModel:
         bigrams = {}
         grams = [' '.join([tex, text.split()[i+1]]) for text in docs 
                  for i, tex in enumerate(text.split()) if i < len(text.split())-1]
+        if len(grams) == 0:
+            # use unigrams
+            grams = [text for text in docs]
         for bigram in grams:
             bigrams[bigram] = bigrams.get(bigram, 0) + 1
         bigrams = pd.DataFrame.from_dict(bigrams, orient='index').reset_index().sort_values(0, ascending=False)
@@ -143,7 +146,7 @@ class TopicTreeModel:
         bigrams = self.get_bigrams(docs)
         possible_topics = bigrams.head(n_candidates)['bigram']
         possible_topics_vects = vectorizer.predict(possible_topics)
-        n_return = max(self.n_return, len(possible_topics))
+        n_return = min(self.n_return, len(possible_topics))
         sims = np.array([cosine_similarity(x, center) for x in possible_topics_vects])
         inds = np.argpartition(sims, -n_return)[-n_return:]
         inds = inds[np.argsort(sims[inds])]
