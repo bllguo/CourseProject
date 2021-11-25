@@ -18,18 +18,28 @@ class TextVectorizer(ABC):
 
 
 class CountVectorizer(TextVectorizer):
-    def __init__(self, unk=False):
+    def __init__(self, unk=False, threshold=0):
         self.unk = unk
         self.vocabulary = {'UNK': 0} if unk else {}
-               
-    def fit(self, documents):
-        i = len(self.vocabulary)
+        self.threshold = threshold
+        self.term_freqs = {}
+        
+    def build_vocabulary(self, documents):
+        term_freqs = {}
         for doc in documents:
             tokens = word_tokenize(doc)
             for token in tokens:
-                if token not in self.vocabulary:
-                    self.vocabulary[token] = i
-                    i += 1
+                term_freqs[token] = term_freqs.get(token, 0) + 1
+        self.term_freqs = term_freqs
+        
+        i = 1 if self.unk else 0
+        for term, count in self.term_freqs.items():
+            if count >= self.threshold:
+                self.vocabulary[term] = i
+                i += 1
+               
+    def fit(self, documents):
+        self.build_vocabulary(documents)
                     
     def predict(self, documents):
         v = len(self.vocabulary)
@@ -46,25 +56,11 @@ class CountVectorizer(TextVectorizer):
     
 class TfidfVectorizer(CountVectorizer):
     def __init__(self, unk=False, threshold=0):
-        self.unk = unk
-        self.vocabulary = {'UNK': 0} if unk else {}
+        super.__init__(unk=unk, threshold=threshold)
         self.document_frequencies = {}
-        self.threshold = threshold
-        self.term_freqs = {}
                     
     def fit(self, documents):
-        term_freqs = {}
-        for doc in documents:
-            tokens = word_tokenize(doc)
-            for token in tokens:
-                term_freqs[token] = term_freqs.get(token, 0) + 1
-        self.term_freqs = term_freqs
-        
-        i = 1 if self.unk else 0
-        for term, count in self.term_freqs.items():
-            if count >= self.threshold:
-                self.vocabulary[term] = i
-                i += 1
+        self.build_vocabulary(documents)
         
         for doc in documents:
             tokens = word_tokenize(doc)
@@ -97,7 +93,7 @@ class EmbeddingVectorizer(TextVectorizer):
         self.embeddings = embeddings
         self.embedding_size = embeddings[list(embeddings.keys())[0]].shape[0]
         
-    def fit(self, documents):
+    def fit(self, documents=None):
         pass
     
     def predict(self, documents):
