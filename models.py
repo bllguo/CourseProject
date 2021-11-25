@@ -24,10 +24,6 @@ def cosine_similarity(x, y):
     return 1 - spatial.distance.cosine(x, y)
 
 
-def pairwise_cosine_similarity(x):
-    return [cosine_similarity(pair[0], pair[1]) for pair in combinations(x, 2)]
-
-
 class ClusterModelWrapper:
     def __init__(self, model):
         self.model = model
@@ -68,28 +64,33 @@ class Node:
         
         
 class TopicTreeModel:
-    def __init__(self, config):
+    def __init__(self, config, n_candidates=10, n_return=3):
         self.config = config
         self.root = None
+        self.n_candidates = n_candidates
+        self.n_return = n_return
         
     @staticmethod   
     def fit_model(X, mask, model_spec):
         model_func, model_params = model_spec
         model = ClusterModelWrapper(model_func(**model_params))
-        labels = model.fit_predict(X[mask])
         padded = -1 * np.ones(X.shape[0])
-        padded[mask] = labels
-        return padded, model.model.cluster_centers_
+        try:
+            labels = model.fit_predict(X[mask])
+            padded[mask] = labels
+            centers = model.model.cluster_centers_
+        except(ValueError):
+            padded[mask] = 0
+            centers = np.mean(X[mask], axis=0).reshape((1, -1))
+        return padded, centers
     
     def fit_level(self, X, parent):
         if parent.depth == len(self.config):
             return
         
         labels, centers = self.fit_model(X, parent.mask, self.config[parent.depth])
-        print(np.unique(labels))
         
         for cluster in range(int(max(labels))+1):
-            print(cluster)
             cluster_mask = (labels == cluster) * parent.mask
             cluster_center = centers[cluster]
             node = parent.add_child(mask=cluster_mask, center=cluster_center)
@@ -97,5 +98,54 @@ class TopicTreeModel:
             self.fit_level(X, node)
             
     def fit(self, X):
+        self.n_samples = X.shape[0]
         self.root = Node(depth=0, mask=np.ones(X.shape[0], dtype=bool), center=None)
         self.fit_level(X, self.root)
+            
+    def decode(self, docs=None, vectorizer=None):
+        assignments = np.zeros((self.n_samples, len(self.config)), dtype=int)
+        nodes = [node for node in self.root.children]
+        centers = {}
+        i = 1
+
+        while len(nodes) > 0:
+            cur = nodes.pop(0)
+            assignments[cur.mask, cur.depth-1] = i
+            topics = []
+            if docs is not None and vectorizer is not None:
+                topics = self.summarize_cluster(docs=docs[cur.mask],
+                                                center=cur.center,
+                                                vectorizer=vectorizer)
+            centers[i] = (topics, cur.center)
+            i += 1
+            nodes += cur.children
+            
+        return assignments, centers
+    
+    def fit_predict(self, X, docs=None, vectorizer=None):
+        self.fit(X)
+        return self.decode(docs, vectorizer)
+    
+    @staticmethod
+    def get_bigrams(docs):
+        bigrams = {}
+        grams = [' '.join([tex, text.split()[i+1]]) for text in docs 
+                 for i, tex in enumerate(text.split()) if i < len(text.split())-1]
+        for bigram in grams:
+            bigrams[bigram] = bigrams.get(bigram, 0) + 1
+        bigrams = pd.DataFrame.from_dict(bigrams, orient='index').reset_index().sort_values(0, ascending=False)
+        bigrams.columns = ['bigram', 'count']
+        bigrams = bigrams.reset_index(drop=True)
+        return bigrams
+    
+    def summarize_cluster(self, docs, center, vectorizer):
+        n_candidates = self.n_candidates
+        n_return = self.n_return
+        bigrams = self.get_bigrams(docs)
+        possible_topics = bigrams.head(n_candidates)['bigram']
+        possible_topics_vects = vectorizer.predict(possible_topics)
+        sims = np.array([cosine_similarity(x, center) for x in possible_topics_vects])
+        inds = np.argpartition(sims, -n_return)[-n_return:]
+        inds = inds[np.argsort(sims[inds])]
+        topics = possible_topics[inds].values
+        return topics
