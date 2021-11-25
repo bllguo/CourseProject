@@ -56,7 +56,7 @@ class CountVectorizer(TextVectorizer):
     
 class TfidfVectorizer(CountVectorizer):
     def __init__(self, unk=False, threshold=0):
-        super.__init__(unk=unk, threshold=threshold)
+        super().__init__(unk=unk, threshold=threshold)
         self.document_frequencies = {}
                     
     def fit(self, documents):
