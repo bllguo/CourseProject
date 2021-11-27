@@ -19,17 +19,31 @@ class StreamCorpus:
     Gensim-compatible corpus class that streams a text file instead of storing it all in memory,
     allowing for much more efficient training.
     """
-    def __init__(self, filename: str='corpus.txt', dct: Dictionary=None):
+    def __init__(self, filename: str='corpus.txt', dct: Dictionary=None, encoding='utf8', skip_rows=0):
         self.dct = dct
         self.filename = filename
+        self.encoding = encoding
+        self.skip_rows = skip_rows
+        self.length = None
         
     def __iter__(self):
-        with open(self.filename, 'r', encoding="utf8") as f:
+        with open(self.filename, 'r', encoding=self.encoding) as f:
+            for _ in range(self.skip_rows):
+                f.readline()
             for line in f:
                 out = line.lower().split()
                 if self.dct:
                     out = self.dct.doc2bow(line.lower().split())
                 yield out
+                
+    def __len__(self):
+        if self.length is None:
+            total_examples = 0
+            with open(self.filename, 'r', encoding=self.encoding) as f:
+                for _ in f:
+                    total_examples += 1
+            self.length = total_examples
+        return self.length
 
 
 class Word2VecTuner():
