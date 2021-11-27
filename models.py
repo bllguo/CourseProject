@@ -1,14 +1,9 @@
 from itertools import combinations
-import pickle
-import re
 import warnings
 import logging
 
-import nltk
 import numpy as np
 import pandas as pd
-from sklearn.pipeline import Pipeline
-from sklearn.cluster import KMeans
 from scipy import spatial
 
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.INFO)
