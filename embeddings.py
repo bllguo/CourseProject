@@ -6,7 +6,7 @@ import gensim.downloader as api
 import numpy as np
 
 from gensim.corpora import Dictionary
-from gensim.models import Word2Vec, KeyedVectors, callbacks
+from gensim.models import KeyedVectors, callbacks
 from gensim.test.utils import get_tmpfile
 
 logging.basicConfig(format='%(asctime)s %(message)s', 
@@ -46,22 +46,32 @@ class StreamCorpus:
         return self.length
 
 
-class Word2VecTuner():
+class EmbeddingTuner():
+    def __init__(self, model):
+        self.model = model
+        
+    def train(self, corpus, **kwargs):
+        self.model.build_vocab(corpus, update=True)
+        self.model.train(corpus, total_examples=len(corpus), **kwargs)
+
+
+class Word2VecTuner(EmbeddingTuner):
     """
     Wrapper around gensim.models.Word2Vec that supports transfer learning.
     Allows loading pretrained embeddings into the Word2Vec model before doing additional
     training to fine-tune the embeddings.
     """
-    def __init__(self, **kwargs):
-        self.model = Word2Vec(**kwargs)
-        
+ 
     def load_embeddings(self, embeddings: KeyedVectors=None, gensim_model: str=None):
         if gensim_model:
             logging.info(f'Downloading {gensim_model}...')
             embeddings = api.load(gensim_model)
             logging.info(f'Download complete.')
         logging.info('Updating model vocabulary...')    
-        self.model.build_vocab(list(embeddings.index_to_key))
+        min_count = self.model.min_count
+        self.model.min_count = 1
+        self.model.build_vocab([[w] for w in embeddings.index_to_key])
+        self.model.min_count = min_count
         logging.info('Update complete.')
         logging.info('Loading pretrained embeddings...')
         with tempfile.TemporaryDirectory() as temp_path:
@@ -70,10 +80,6 @@ class Word2VecTuner():
             self.model.wv.vectors_lockf = np.ones(len(self.model.wv), dtype=np.float32)
             self.model.wv.intersect_word2vec_format(fpath, lockf=1.0)
         logging.info('Pretrained embeddings loaded to Word2Vec model.')
-        
-    def train(self, corpus, **kwargs):
-        self.model.build_vocab(corpus, update=True)
-        self.model.train(corpus, **kwargs)
 
 
 class EpochSaver(callbacks.CallbackAny2Vec):
