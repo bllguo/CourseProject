@@ -1,24 +1,31 @@
 import numpy as np
 
 from abc import ABC, abstractmethod
-from nltk.tokenize import word_tokenize
+
+
+def tokenize(s):
+    return s.split()
 
 
 class TextVectorizer(ABC):
     """
     Base class for creating vector representations of text.
     """
+    def __init__(self, tokenizer=None):
+        self.tokenizer = tokenizer or tokenize
+    
     @abstractmethod
-    def fit(self, documents):
+    def fit(self, X, y=None):
         pass
     
     @abstractmethod
-    def predict(self, documents):
+    def predict(self, X):
         pass
 
 
 class CountVectorizer(TextVectorizer):
-    def __init__(self, unk=False, threshold=0):
+    def __init__(self, unk=False, threshold=0, **kwargs):
+        super().__init__(**kwargs)
         self.unk = unk
         self.vocabulary = {'UNK': 0} if unk else {}
         self.threshold = threshold
@@ -27,7 +34,7 @@ class CountVectorizer(TextVectorizer):
     def build_vocabulary(self, documents):
         term_freqs = {}
         for doc in documents:
-            tokens = word_tokenize(doc)
+            tokens = self.tokenizer(doc)
             for token in tokens:
                 term_freqs[token] = term_freqs.get(token, 0) + 1
         self.term_freqs = term_freqs
@@ -38,15 +45,15 @@ class CountVectorizer(TextVectorizer):
                 self.vocabulary[term] = i
                 i += 1
                
-    def fit(self, documents):
-        self.build_vocabulary(documents)
+    def fit(self, X, y=None):
+        self.build_vocabulary(X)
                     
     def predict(self, documents):
         v = len(self.vocabulary)
         n = len(documents)
         out = np.zeros((n, v))
         for i, doc in enumerate(documents):
-            tokens = word_tokenize(doc)
+            tokens = self.tokenizer(doc)
             for token in tokens:
                 j = self.vocabulary.get(token, 0 if self.unk else None)
                 if j is not None:
@@ -55,26 +62,26 @@ class CountVectorizer(TextVectorizer):
             
     
 class TfidfVectorizer(CountVectorizer):
-    def __init__(self, unk=False, threshold=0):
-        super().__init__(unk=unk, threshold=threshold)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.document_frequencies = {}
                     
-    def fit(self, documents):
-        self.build_vocabulary(documents)
+    def fit(self, X, y=None):
+        self.build_vocabulary(X)
         
-        for doc in documents:
-            tokens = word_tokenize(doc)
+        for doc in X:
+            tokens = self.tokenizer(doc)
             for token in tokens:
                 j = self.vocabulary.get(token)
                 if j is not None:
                     self.document_frequencies[j] = self.document_frequencies.get(j, 0) + 1
                     
-    def predict(self, documents):
+    def predict(self, X):
         v = len(self.vocabulary)
-        n = len(documents)
+        n = len(X)
         out = np.zeros((n, v))
-        for i, doc in enumerate(documents):
-            tokens = word_tokenize(doc)
+        for i, doc in enumerate(X):
+            tokens = self.tokenizer(doc)
             d = len(tokens)
             term_counts = {}
             for token in tokens:
@@ -89,22 +96,27 @@ class TfidfVectorizer(CountVectorizer):
                 
     
 class EmbeddingVectorizer(TextVectorizer):
-    def __init__(self, embeddings: dict=None):
+    def __init__(self, embeddings: dict=None, **kwargs):
+        super().__init__(**kwargs)
         self.embeddings = embeddings
         self.embedding_size = embeddings[list(embeddings.keys())[0]].shape[0]
         
-    def fit(self, documents=None):
+    def fit(self, X=None, y=None):
         pass
     
-    def predict(self, documents):
-        n = len(documents)
+    def predict(self, X):
+        n = len(X)
         out = np.zeros((n, self.embedding_size))
-        for i, doc in enumerate(documents):
+        for i, doc in enumerate(X):
             v = np.zeros(self.embedding_size)
             count = 0
-            tokens = word_tokenize(doc)
+            tokens = self.tokenizer(doc)
             for token in tokens:
-                word_embedding = self.embeddings.get(token)
+                word_embedding = self.embeddings.get(
+                    token, 
+                    self.embeddings.get(
+                        token.capitalize(), 
+                        self.embeddings.get(token.lower())))
                 if word_embedding is not None:
                     v += word_embedding
                     count += 1
