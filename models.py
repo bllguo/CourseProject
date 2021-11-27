@@ -53,7 +53,7 @@ class ClusterModelWrapper:
                         best_v = v
                 best_vals[param] = best_v
         return best_vals
-        
+    
     def fit(self, X, y=None):
         best_vals = self._validate(X, y)
         self.model = self.model_func(**best_vals, **self.model_params)
@@ -74,7 +74,7 @@ class ClusterModelWrapper:
         try:
             return self.model.n_clusters
         except(AttributeError):
-            return self.model.cluster_centers_.shape[0]
+            return self.model.cluster_centers_.shape[0]            
         
 
 class Node:
@@ -179,3 +179,11 @@ class TopicTreeModel:
         inds = inds[np.argsort(sims[inds])]
         topics = possible_topics[inds].values
         return topics
+
+    @staticmethod
+    def flatten(docs, assignments, clusters):
+        output = pd.DataFrame(docs)
+        for level in range(assignments.shape[1]):
+            output[f'level{level+1}'] = pd.Series(map(lambda x: clusters[x]['topics'], assignments[:, level]), 
+                                                name=f'level{level+1}')
+        return output
