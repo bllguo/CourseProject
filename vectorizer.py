@@ -1,7 +1,7 @@
 import numpy as np
 
 from abc import ABC, abstractmethod
-
+from gensim.models import KeyedVectors
 
 def tokenize(s):
     return s.split()
@@ -117,6 +117,33 @@ class EmbeddingVectorizer(TextVectorizer):
                     self.embeddings.get(
                         token.capitalize(), 
                         self.embeddings.get(token.lower())))
+                if word_embedding is not None:
+                    v += word_embedding
+                    count += 1
+            if count > 0:
+                v /= count
+            out[i, :] = v
+        return out
+
+
+class KVVectorizer(TextVectorizer):
+    def __init__(self, embeddings: KeyedVectors=None, **kwargs):
+        super().__init__(**kwargs)
+        self.embeddings = embeddings
+        self.embedding_size = embeddings.vector_size
+    
+    def fit(self, X=None, y=None):
+        pass
+    
+    def predict(self, X):
+        n = len(X)
+        out = np.zeros((n, self.embedding_size))
+        for i, doc in enumerate(X):
+            v = np.zeros(self.embedding_size)
+            count = 0
+            tokens = self.tokenizer(doc)
+            for token in tokens:
+                word_embedding = self.embeddings[token]
                 if word_embedding is not None:
                     v += word_embedding
                     count += 1
