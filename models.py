@@ -20,16 +20,48 @@ def pairwise_cosine_similarity(x):
 
 
 class ClusterModelWrapper:
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, model_func, validate: dict=None, **kwargs):
+        self.model_func = model_func
+        self.model_params = kwargs
+        self.validate = validate
+        self.model = None
+    
+    @staticmethod    
+    def _cosine_measure(X, labels, lmbda=0.02):
+        unique_labels = np.unique(labels)
+        n_clusters = len(unique_labels)
+        cosines = np.zeros(n_clusters)
+        for i, label in enumerate(unique_labels):
+            cluster = X[labels == label]
+            cosines[i] = np.nanmean(pairwise_cosine_similarity(cluster))
+        return np.nanmean(cosines) - lmbda*n_clusters
+        
+    def _validate(self, X, y=None):
+        best_vals = {}
+        if self.validate:
+            all_scores = {}
+            for param, to_val in self.validate.items():
+                all_scores[param] = {}
+                best_score, best_v = 0, 0
+                for v in to_val['values']:
+                    model = self.model_func(**{param: v}, **self.model_params)
+                    labels = model.fit_predict(X, y)
+                    score = self._cosine_measure(X, labels, lmbda=to_val.get('lambda', 0))
+                    all_scores[param][v] = score
+                    if score > best_score:
+                        best_score = score
+                        best_v = v
+                best_vals[param] = best_v
+        return best_vals
         
     def fit(self, X, y=None):
+        best_vals = self._validate(X, y)
+        self.model = self.model_func(**best_vals, **self.model_params)
         return self.model.fit(X, y)
     
-    def predict(self, X):
-        return self.model.predict(X)
-    
     def fit_predict(self, X, y=None):
+        best_vals = self._validate(X, y)
+        self.model = self.model_func(**best_vals, **self.model_params)
         return self.model.fit_predict(X, y)
     
     def get_params(self, deep=True):
@@ -68,13 +100,13 @@ class TopicTreeModel:
     @staticmethod   
     def fit_model(X, mask, model_spec):
         model_func, model_params = model_spec
-        model = ClusterModelWrapper(model_func(**model_params))
+        model = ClusterModelWrapper(model_func, **model_params)
         padded = -1 * np.ones(X.shape[0])
         try:
             labels = model.fit_predict(X[mask])
             padded[mask] = labels
             centers = model.model.cluster_centers_
-        except(ValueError):
+        except(ValueError, AttributeError):
             padded[mask] = 0
             centers = np.mean(X[mask], axis=0).reshape((1, -1))
         return padded, centers
@@ -92,7 +124,7 @@ class TopicTreeModel:
             
             self.fit_level(X, node)
             
-    def fit(self, X):
+    def fit(self, X, y=None):
         self.n_samples = X.shape[0]
         self.root = Node(depth=0, mask=np.ones(X.shape[0], dtype=bool), center=None)
         self.fit_level(X, self.root)
@@ -111,15 +143,15 @@ class TopicTreeModel:
                 topics = self.summarize_cluster(docs=docs[cur.mask],
                                                 center=cur.center,
                                                 vectorizer=vectorizer)
-            centers[i] = (topics, cur.center)
+            centers[i] = {'topics': topics, 'center': cur.center, 'mask': cur.mask}
             i += 1
             nodes += cur.children
             
         return assignments, centers
     
-    def fit_predict(self, X, docs=None, vectorizer=None):
+    def fit_predict(self, X, y=None, vectorizer=None):
         self.fit(X)
-        return self.decode(docs, vectorizer)
+        return self.decode(y, vectorizer)
     
     @staticmethod
     def get_bigrams(docs):
