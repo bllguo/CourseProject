@@ -16,10 +16,21 @@ logging.basicConfig(format='%(asctime)s %(message)s',
 
 class StreamCorpus:
     """
-    Gensim-compatible corpus class that streams a text file instead of storing it all in memory,
-    allowing for much more efficient training.
+    Corpus class that streams a text file instead of storing it all in memory, allowing for more efficient training.
     """
-    def __init__(self, filename: str='corpus.txt', dct: Dictionary=None, encoding='utf8', skip_rows=0):
+    
+    def __init__(self, 
+                 filename: str='corpus.txt', 
+                 dct: Dictionary=None, 
+                 encoding: str='utf8', 
+                 skip_rows: int=0):
+        """
+            Args:
+            filename (str): The path to the file to be streamed.
+            dct (gensim.corpora.Dictionary, optional): Gensim dictionary to use for mapping words to integers.
+            encoding (str, optional): The encoding of the file. Defaults to 'utf8'.
+            skip_rows (int, optional): The number of rows to skip at the beginning of the file. Defaults to 0.
+        """
         self.dct = dct
         self.filename = filename
         self.encoding = encoding
@@ -47,22 +58,44 @@ class StreamCorpus:
 
 
 class EmbeddingTuner():
+    """
+    Wrapper around gensim embedding models that allows for fine-tuning.
+    """
+    
     def __init__(self, model):
+        """
+        Args:
+            model: The embedding model to be fine-tuned.
+        """
         self.model = model
         
     def train(self, corpus, **kwargs):
+        """
+        Fine-tunes the embedding model with given corpus.
+        
+        Args:
+            corpus: The corpus to be used for fine-tuning.
+            **kwargs: Additional keyword arguments to be passed to the model's train() method.
+        """
         self.model.build_vocab(corpus, update=True)
         self.model.train(corpus, total_examples=len(corpus), **kwargs)
 
 
 class Word2VecTuner(EmbeddingTuner):
     """
-    Wrapper around gensim.models.Word2Vec that supports transfer learning.
-    Allows loading pretrained embeddings into the Word2Vec model before doing additional
-    training to fine-tune the embeddings.
+    Wrapper around gensim.models.Word2Vec that supports transfer learning off of 
+    Word2Vec gensim.models.KeyedVectors.
     """
- 
-    def load_embeddings(self, embeddings: KeyedVectors=None, gensim_model: str=None):
+    def load_embeddings(self, 
+                        embeddings: KeyedVectors=None, 
+                        gensim_model: str=None):
+        """
+        Args:
+            embeddings (gensim.models.KeyedVectors, optional): The embeddings to be used for transfer learning. 
+                One of embeddings or gensim_model must be specified. Defaults to None.
+            gensim_model (str, optional): The name of the gensim model to be downloaded from the gensim data repo 
+                and used for transfer learning. One of embeddings or gensim_model must be specified. Defaults to None.
+        """
         if gensim_model:
             logging.info(f'Downloading {gensim_model}...')
             embeddings = api.load(gensim_model)
@@ -87,17 +120,21 @@ class EpochSaver(callbacks.CallbackAny2Vec):
     Handy callback to save model after each training epoch.
     """
     def __init__(self, path_prefix: str):
+        """
+        Args:
+            path_prefix (str): Prefix for path to save model, e.g. 'model' will save to 'model_epoch#.model'.
+        """
         self.path_prefix = path_prefix
         self.epoch = 0
         self.epoch_start = None
 
     def on_epoch_begin(self, model):
         self.epoch_start = datetime.now()
-        print(f"Epoch #{self.epoch} start: {self.epoch_start}")
+        logging.info(f"Epoch #{self.epoch} start: {self.epoch_start}")
         
     def on_epoch_end(self, model):
         output_path = get_tmpfile('{}_epoch{}.model'.format(self.path_prefix, self.epoch))
         model.save(output_path)
-        print(f"Epoch #{self.epoch} end: {datetime.now()}")
-        print(f"Elapsed: {datetime.now() - self.epoch_start}")
+        logging.info(f"Epoch #{self.epoch} end: {datetime.now()}")
+        logging.info(f"Elapsed: {datetime.now() - self.epoch_start}")
         self.epoch += 1
