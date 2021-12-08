@@ -8,10 +8,10 @@ This project was started in 2021 as part of CS410 at the University of Illinois 
 
 `httrees` requires:
 
--NumPy
--SciPy
--Pandas
--Gensim
+  - NumPy
+  - SciPy
+  - Pandas
+  - Gensim
 
 It does not strictly require scikit-learn, but is intended to be used alongside sklearn flat clustering models, though any clustering model following the sklearn API will be compatible.
 
