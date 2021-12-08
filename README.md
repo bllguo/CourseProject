@@ -24,6 +24,6 @@ It does not strictly require scikit-learn, but is intended to be used alongside 
 # Documentation and Usage
 
 An example use case, along with a written overview of the implementation, can be found [in IPython notebook form here](https://github.com/bllguo/CourseProject/blob/main/docs.ipynb).
-They can also be found [here](https://github.com/bllguo/CourseProject/blob/main/docs.html).
+They can also be found [at this page](https://bllguo.github.io/CourseProject/docs).
 
-An example for fine-tuning embeddings can be found in [this notebook](https://github.com/bllguo/CourseProject/blob/main/example_finetune.ipynb) and [this page](https://github.com/bllguo/CourseProject/blob/main/example_finetune.html).
+An example for fine-tuning embeddings can be found in [this notebook](https://github.com/bllguo/CourseProject/blob/main/example_finetune.ipynb) and [this page](https://bllguo.github.io/CourseProject/example_finetune).
