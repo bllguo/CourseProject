@@ -21,7 +21,9 @@ It does not strictly require scikit-learn, but is intended to be used alongside 
 
 `pip install git+git://github.com/bllguo/CourseProject`
 
-# Usage
+# Documentation and Usage
 
-A broad written overview of the implementation can be found in <TODO>
-An accompanying IPython notebook with examples is also available <TODO>
+An example use case, along with a written overview of the implementation, can be found [in IPython notebook form here](https://github.com/bllguo/CourseProject/blob/main/httrees/docs.ipynb).
+They can also be found [here](https://github.com/bllguo/CourseProject/blob/main/httrees/docs.html).
+
+An example for fine-tuning embeddings can be found in [this notebook](https://github.com/bllguo/CourseProject/blob/main/httrees/example_finetune.ipynb) and [this page](https://github.com/bllguo/CourseProject/blob/main/httrees/example_finetune.html).
