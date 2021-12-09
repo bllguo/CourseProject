@@ -27,3 +27,5 @@ An example use case, along with a written overview of the implementation, can be
 They can also be found [at this page](https://bllguo.github.io/CourseProject/docs).
 
 An example for fine-tuning embeddings can be found in [this notebook](https://github.com/bllguo/CourseProject/blob/main/example_finetune.ipynb) and [this page](https://bllguo.github.io/CourseProject/example_finetune).
+
+A video demo is available [at this link](https://uofi.box.com/s/0cjg3ftn23hnl1ez1id4ihkyzyikhrvo).
